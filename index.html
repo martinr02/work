@@ -101,7 +101,7 @@
 
     <!-- Schedule Adherence -->
     <div class="kpi-item">
-      <h3>Schedule Adherence (87-93%)</h3>
+      <h3>Schedule Adherence (89-93%)</h3>
       <input type="text" id="sa" placeholder="Фактическое значение (%)">
       <div class="progress-bar">
         <div class="progress-fill" id="sa-progress"></div>
@@ -110,7 +110,7 @@
 
     <!-- Контроль качества -->
     <div class="kpi-item">
-      <h3>Контроль качества (80-95)</h3>
+      <h3>Контроль качества (85-96)</h3>
       <input type="text" id="qc" placeholder="Фактическое значение">
       <div class="progress-bar">
         <div class="progress-fill" id="qc-progress"></div>
@@ -119,7 +119,7 @@
 
     <!-- Продажи на входящих -->
     <div class="kpi-item">
-      <h3>Продажи на входящих (67-85%)</h3>
+      <h3>Продажи на входящих (42-76%)</h3>
       <input type="text" id="sales" placeholder="Фактическое значение (%)">
       <div class="progress-bar">
         <div class="progress-fill" id="sales-progress"></div>
@@ -161,58 +161,48 @@
   <script>
     const BASE_KPI = 1995000; // Новая базовая сумма
 
-    // Функция parseNumber: возвращает NaN, если поле пустое
     function parseNumber(value) {
       const trimmed = value.trim();
-      if (!trimmed) return NaN; // Пустая строка => нет данных
+      if (!trimmed) return NaN;
       return parseFloat(trimmed.replace(',', '.'));
     }
 
     function calculateKPI() {
-      // Получение отработанных часов
       const hoursRaw = document.getElementById('hours').value;
       const workedHours = parseNumber(hoursRaw);
       const hoursCoefficient = !isNaN(workedHours) ? Math.min(workedHours / 176, 1) : 0;
 
-      // Считываем сырые значения из инпутов
       const saRaw    = document.getElementById('sa').value;
       const qcRaw    = document.getElementById('qc').value;
       const salesRaw = document.getElementById('sales').value;
       const rcRaw    = document.getElementById('rc').value;
       const testRaw  = document.getElementById('test').value;
 
-      // Преобразуем в числа (или NaN, если пусто)
       const sa    = parseNumber(saRaw);
       const qc    = parseNumber(qcRaw);
       const sales = parseNumber(salesRaw);
       const rc    = parseNumber(rcRaw);
       const test  = parseNumber(testRaw);
 
-      // Для каждого KPI: если NaN => 0 баллов (пустое поле)
-      const saScore    = !isNaN(sa)    ? calculateScore(sa,    87, 93, 25, true) : 0;
-      const qcScore    = !isNaN(qc)    ? calculateScore(qc,    80, 95, 25, true) : 0;
-      const salesScore = !isNaN(sales) ? calculateScore(sales, 67, 85, 25, true) : 0;
+      const saScore    = !isNaN(sa)    ? calculateScore(sa,    89, 93, 25, true) : 0;
+      const qcScore    = !isNaN(qc)    ? calculateScore(qc,    85, 96, 25, true) : 0;
+      const salesScore = !isNaN(sales) ? calculateScore(sales, 42, 76, 25, true) : 0;
       const rcScore    = !isNaN(rc)    ? calculateScore(rc,    23, 26, 15, false) : 0;
-      const testScore  = !isNaN(test)  ? calculateScore(test,  9,  10, 10, true)  : 0;
+      const testScore  = !isNaN(test)  ? calculateScore(test,   9, 10, 10, true)  : 0;
 
-      // Общий расчет
       const totalScore = saScore + qcScore + salesScore + rcScore + testScore;
       const totalBeforeTax = totalScore / 100 * BASE_KPI * hoursCoefficient;
       const tax = totalBeforeTax * 0.075;
       const totalAfterTax = totalBeforeTax - tax;
-
-      // Расчет процента от общего КПИ
       const kpiPercentage = totalScore;
 
-      // Обновление прогресс-баров (передаем NaN => ширина = 0%)
       updateProgress('hours-progress', workedHours, 176);
       updateProgress('sa-progress',    sa,    93);
-      updateProgress('qc-progress',    qc,    95);
-      updateProgress('sales-progress', sales, 85);
+      updateProgress('qc-progress',    qc,    96);
+      updateProgress('sales-progress', sales, 76);
       updateProgress('rc-progress',    rc,    26, true, 23);
       updateProgress('test-progress',  test,  10);
 
-      // Обновление результатов
       document.getElementById('total-before-tax').textContent = 
         `${Math.round(totalBeforeTax).toLocaleString('ru-RU')} сум`;
       document.getElementById('total-after-tax').textContent = 
@@ -222,7 +212,6 @@
       document.getElementById('kpi-percentage').textContent = 
         `Процент от общего КПИ: ${kpiPercentage.toFixed(2)}%`;
 
-      // Предупреждение, если часов меньше 176
       const hoursWarning = document.getElementById('hours-warning');
       hoursWarning.style.display = (!isNaN(workedHours) && workedHours < 176) ? 'block' : 'none';
     }
@@ -234,16 +223,14 @@
         return ((value - min) / (max - min)) * weight;
       } else {
         // (чем меньше - тем лучше)
-        if (value <= max) return weight; 
-        if (value >= min) return 0;
-        return ((min - value) / (min - max)) * weight;
+        if (value <= min) return weight;
+        if (value >= max) return 0;
+        return ((max - value) / (max - min)) * weight;
       }
     }
 
-    // Обновление ширины прогресс-бара с поддержкой кастомного нижнего значения
     function updateProgress(id, value, maxValue, reverse = false, customMin = null) {
       const progressFill = document.getElementById(id);
-      // Если value = NaN (поле пустое) => 0%
       if (isNaN(value)) {
         progressFill.style.width = '0%';
         return;
@@ -267,12 +254,10 @@
       progressFill.style.width = `${percentage}%`;
     }
 
-    // Авторасчет при вводе
     document.querySelectorAll('input').forEach(input => {
       input.addEventListener('input', calculateKPI);
     });
 
-    // Расчет при загрузке страницы
     window.onload = calculateKPI;
   </script>
 </body>

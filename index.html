@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Калькулятор КПИ</title>
   <style>
     body {
@@ -50,8 +50,8 @@
     .progress-fill {
       height: 100%;
       border-radius: 10px;
-      background: linear-gradient(90deg, #ff4444, #00C851);
-      transition: width 0.3s ease;
+      background: #aaa;
+      transition: width 0.3s ease, background-color 0.3s ease;
     }
     .result-box {
       background: #007bff;
@@ -92,31 +92,25 @@
 <body>
   <div class="container">
     <h2>Калькулятор КПИ</h2>
-    <!-- Блок отработанных часов -->
+
     <div class="hours-section">
       <h3>Учет отработанных часов</h3>
-
-      <label for="month-select">Месяц:</label><br>
+      <label for="month-select">Месяц:</label><br />
       <select id="month-select">
         <option value="" disabled selected>Выберите месяц</option>
         <option value="Апрель">Апрель</option>
         <option value="Май">Май</option>
         <option value="Июнь">Июнь</option>
-      </select><br>
-
-      <label for="hours-input">Норма часов:</label><br>
-      <input type="number" id="hours-input" readonly><br>
-
-      <label for="hours">Отработано часов:</label><br>
+      </select><br/>
+      <label for="hours-input">Норма часов:</label><br />
+      <input type="number" id="hours-input" readonly><br/>
       <input type="number" id="hours" placeholder="Отработано часов в месяце" min="0" max="744">
-
       <div class="progress-bar">
         <div class="progress-fill" id="hours-progress"></div>
       </div>
-      <div id="hours-warning" style="color: #dc3545; display: none;"> Норма: 176 часов</div>
+      <div id="hours-warning" style="color: #dc3545; display: none;"> Норма: меньше выбранной</div>
     </div>
 
-    <!-- KPI блоки -->
     <div class="kpi-item">
       <h3>Schedule Adherence (89-93%)</h3>
       <input type="text" id="sa" placeholder="Фактическое значение (%)">
@@ -163,33 +157,23 @@
 
   <script>
     const BASE_KPI = 1995000;
+    const hoursNorm = { "Апрель": 176, "Май": 167, "Июнь": 159 };
+    let selectedNorm = 176;
 
-    const hoursNorm = {
-      "Апрель": 176,
-      "Май": 167,
-      "Июнь": 159
-    };
-
-    document.getElementById("month-select").addEventListener("change", function () {
-      const month = this.value;
-      const norm = hoursNorm[month];
-      document.getElementById("hours-input").value = norm;
+    document.getElementById("month-select").addEventListener("change", function() {
+      selectedNorm = hoursNorm[this.value];
+      document.getElementById("hours-input").value = selectedNorm;
       calculateKPI();
     });
 
     function parseNumber(value) {
-      const trimmed = value.trim();
-      if (!trimmed) return NaN;
-      return parseFloat(trimmed.replace(',', '.'));
+      const t = value.trim(); if (!t) return NaN;
+      return parseFloat(t.replace(',', '.'));
     }
 
     function calculateKPI() {
-      const hoursRaw = document.getElementById('hours').value;
-      const normHoursRaw = document.getElementById('hours-input').value;
-      const workedHours = parseNumber(hoursRaw);
-      const normHours = parseNumber(normHoursRaw);
-      const hoursCoefficient = (!isNaN(workedHours) && !isNaN(normHours)) ? Math.min(workedHours / normHours, 1) : 0;
-
+      const hours = parseNumber(document.getElementById('hours').value);
+      const coeff = !isNaN(hours) ? Math.min(hours / selectedNorm, 1) : 0;
       const sa    = parseNumber(document.getElementById('sa').value);
       const qc    = parseNumber(document.getElementById('qc').value);
       const sales = parseNumber(document.getElementById('sales').value);
@@ -201,63 +185,72 @@
       const salesScore = !isNaN(sales) ? calculateScore(sales, 42, 76, 25, true) : 0;
       const rcScore    = !isNaN(rc)    ? calculateScore(rc,    23, 26, 15, false) : 0;
       const testScore  = !isNaN(test)  ? calculateScore(test,   9, 10, 10, true)  : 0;
-
       const totalScore = saScore + qcScore + salesScore + rcScore + testScore;
-      const totalBeforeTax = totalScore / 100 * BASE_KPI * hoursCoefficient;
-      const tax = totalBeforeTax * 0.075;
-      const totalAfterTax = totalBeforeTax - tax;
 
-      updateProgress('hours-progress', workedHours, normHours);
-      updateProgress('sa-progress', sa, 93);
-      updateProgress('qc-progress', qc, 96);
-      updateProgress('sales-progress', sales, 76);
+      const beforeTax = totalScore / 100 * BASE_KPI * coeff;
+      const afterTax  = beforeTax * 0.925;
+
+      updateProgress('hours-progress', hours, selectedNorm);
+      updateProgress('sa-progress', sa, 93, false, 89);
+      updateProgress('qc-progress', qc, 96, false, 85);
+      updateProgress('sales-progress', sales, 76, false, 42);
       updateProgress('rc-progress', rc, 26, true, 23);
-      updateProgress('test-progress', test, 10);
+      updateProgress('test-progress', test, 10, false, 9);
 
-      document.getElementById('total-before-tax').textContent = `${Math.round(totalBeforeTax).toLocaleString('ru-RU')} сум`;
-      document.getElementById('total-after-tax').textContent = `${Math.round(totalAfterTax).toLocaleString('ru-RU')} сум`;
-      document.getElementById('hours-coefficient').textContent = `Коэффициент часов: ${(hoursCoefficient * 100).toFixed(1)}%`;
-      document.getElementById('kpi-percentage').textContent = `Процент от общего КПИ: ${totalScore.toFixed(2)}%`;
+      document.getElementById('total-before-tax').textContent = `${Math.round(beforeTax).toLocaleString('ru-RU')} сум`;
+      document.getElementById('total-after-tax').textContent  = `${Math.round(afterTax).toLocaleString('ru-RU')} сум`;
+      document.getElementById('hours-coefficient').textContent = `Коэффициент часов: ${(coeff*100).toFixed(1)}%`;
+      document.getElementById('kpi-percentage').textContent   = `Процент от общего КПИ: ${totalScore.toFixed(2)}%`;
 
-      const hoursWarning = document.getElementById('hours-warning');
-      hoursWarning.style.display = (!isNaN(workedHours) && !isNaN(normHours) && workedHours < normHours) ? 'block' : 'none';
+      document.getElementById('hours-warning').style.display = (!isNaN(hours) && hours < selectedNorm) ? 'block' : 'none';
     }
 
-    function calculateScore(value, min, max, weight, isMoreBetter) {
-      if (isMoreBetter) {
-        if (value >= max) return weight;
-        if (value <= min) return 0;
-        return ((value - min) / (max - min)) * weight;
+    function calculateScore(val, min, max, wt, moreBetter) {
+      if (moreBetter) {
+        if (val <= min) return 0;
+        if (val >= max) return wt;
+        return (val - min)/(max - min)*wt;
       } else {
-        if (value <= min) return weight;
-        if (value >= max) return 0;
-        return ((max - value) / (max - min)) * weight;
+        if (val <= min) return wt;
+        if (val >= max) return 0;
+        return (max - val)/(max - min)*wt;
       }
     }
 
-    function updateProgress(id, value, maxValue, reverse = false, customMin = null) {
-      const progressFill = document.getElementById(id);
-      if (isNaN(value)) {
-        progressFill.style.width = '0%';
-        return;
-      }
-      let percentage = 0;
+    function updateProgress(id, value, maxValue, reverse=false, customMin=null) {
+      const el = document.getElementById(id);
+      if (isNaN(value)) { el.style.width='0%'; el.style.backgroundColor='#eee'; return; }
+
+      // width always relative to maxValue
+      let w = (value/maxValue)*100;
+      if (reverse) w = 100 - w;
+      w = Math.min(100, Math.max(0, w));
+      el.style.width = `${w}%`;
+
+      // color ratio based on [customMin..maxValue]
+      let r;
       if (reverse && customMin !== null) {
-        percentage = (value <= customMin) ? 100 :
-                     (value >= maxValue) ? 0 :
-                     (1 - ((value - customMin) / (maxValue - customMin))) * 100;
+        if (value <= customMin) r = 1;
+        else if (value >= maxValue) r = 0;
+        else r = (maxValue - value)/(maxValue - customMin);
+      } else if (!reverse && customMin !== null) {
+        if (value <= customMin) r = 0;
+        else if (value >= maxValue) r = 1;
+        else r = (value - customMin)/(maxValue - customMin);
       } else {
-        percentage = (value / maxValue) * 100;
-        percentage = Math.min(100, Math.max(0, percentage));
-        if (reverse) percentage = 100 - percentage;
+        r = w/100;
       }
-      progressFill.style.width = `${percentage}%`;
+
+      if (r <= 0)         el.style.backgroundColor = 'rgb(255,0,0)';
+      else if (r >= 1)    el.style.backgroundColor = 'rgb(0,200,0)';
+      else {
+        const red   = Math.round(255*(1-r));
+        const green = Math.round(200*r);
+        el.style.backgroundColor = `rgb(${red},${green},0)`;
+      }
     }
 
-    document.querySelectorAll('input').forEach(input => {
-      input.addEventListener('input', calculateKPI);
-    });
-
+    document.querySelectorAll('input').forEach(i=>i.addEventListener('input', calculateKPI));
     window.onload = calculateKPI;
   </script>
 </body>

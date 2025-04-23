@@ -30,12 +30,15 @@
       border-left: 4px solid #007bff;
       background: #f8f9fa;
     }
-    input {
+    input, select {
       padding: 8px;
       margin: 5px 0;
       width: 200px;
       border: 1px solid #ddd;
       border-radius: 4px;
+    }
+    #hours-input {
+      background: #f5f5f5;
     }
     .progress-bar {
       height: 20px;
@@ -92,56 +95,56 @@
     <!-- Блок отработанных часов -->
     <div class="hours-section">
       <h3>Учет отработанных часов</h3>
+
+      <label for="month-select">Месяц:</label><br>
+      <select id="month-select">
+        <option value="" disabled selected>Выберите месяц</option>
+        <option value="Апрель">Апрель</option>
+        <option value="Май">Май</option>
+        <option value="Июнь">Июнь</option>
+      </select><br>
+
+      <label for="hours-input">Норма часов:</label><br>
+      <input type="number" id="hours-input" readonly><br>
+
+      <label for="hours">Отработано часов:</label><br>
       <input type="number" id="hours" placeholder="Отработано часов в месяце" min="0" max="744">
+
       <div class="progress-bar">
         <div class="progress-fill" id="hours-progress"></div>
       </div>
       <div id="hours-warning" style="color: #dc3545; display: none;"> Норма: 176 часов</div>
     </div>
 
-    <!-- Schedule Adherence -->
+    <!-- KPI блоки -->
     <div class="kpi-item">
       <h3>Schedule Adherence (89-93%)</h3>
       <input type="text" id="sa" placeholder="Фактическое значение (%)">
-      <div class="progress-bar">
-        <div class="progress-fill" id="sa-progress"></div>
-      </div>
+      <div class="progress-bar"><div class="progress-fill" id="sa-progress"></div></div>
     </div>
 
-    <!-- Контроль качества -->
     <div class="kpi-item">
       <h3>Контроль качества (85-96)</h3>
       <input type="text" id="qc" placeholder="Фактическое значение">
-      <div class="progress-bar">
-        <div class="progress-fill" id="qc-progress"></div>
-      </div>
+      <div class="progress-bar"><div class="progress-fill" id="qc-progress"></div></div>
     </div>
 
-    <!-- Продажи на входящих -->
     <div class="kpi-item">
       <h3>Продажи на входящих (42-76%)</h3>
       <input type="text" id="sales" placeholder="Фактическое значение (%)">
-      <div class="progress-bar">
-        <div class="progress-fill" id="sales-progress"></div>
-      </div>
+      <div class="progress-bar"><div class="progress-fill" id="sales-progress"></div></div>
     </div>
 
-    <!-- Repeated Calls -->
     <div class="kpi-item">
       <h3>Repeated Calls (23-26%)</h3>
       <input type="text" id="rc" placeholder="Фактическое значение (%)">
-      <div class="progress-bar">
-        <div class="progress-fill" id="rc-progress"></div>
-      </div>
+      <div class="progress-bar"><div class="progress-fill" id="rc-progress"></div></div>
     </div>
 
-    <!-- Итоги тестирования -->
     <div class="kpi-item">
       <h3>Итоги тестирования (9-10)</h3>
       <input type="text" id="test" placeholder="Фактическое значение">
-      <div class="progress-bar">
-        <div class="progress-fill" id="test-progress"></div>
-      </div>
+      <div class="progress-bar"><div class="progress-fill" id="test-progress"></div></div>
     </div>
 
     <div class="result-box">
@@ -159,7 +162,20 @@
   </div>
 
   <script>
-    const BASE_KPI = 1995000; // Новая базовая сумма
+    const BASE_KPI = 1995000;
+
+    const hoursNorm = {
+      "Апрель": 176,
+      "Май": 167,
+      "Июнь": 159
+    };
+
+    document.getElementById("month-select").addEventListener("change", function () {
+      const month = this.value;
+      const norm = hoursNorm[month];
+      document.getElementById("hours-input").value = norm;
+      calculateKPI();
+    });
 
     function parseNumber(value) {
       const trimmed = value.trim();
@@ -169,20 +185,16 @@
 
     function calculateKPI() {
       const hoursRaw = document.getElementById('hours').value;
+      const normHoursRaw = document.getElementById('hours-input').value;
       const workedHours = parseNumber(hoursRaw);
-      const hoursCoefficient = !isNaN(workedHours) ? Math.min(workedHours / 176, 1) : 0;
+      const normHours = parseNumber(normHoursRaw);
+      const hoursCoefficient = (!isNaN(workedHours) && !isNaN(normHours)) ? Math.min(workedHours / normHours, 1) : 0;
 
-      const saRaw    = document.getElementById('sa').value;
-      const qcRaw    = document.getElementById('qc').value;
-      const salesRaw = document.getElementById('sales').value;
-      const rcRaw    = document.getElementById('rc').value;
-      const testRaw  = document.getElementById('test').value;
-
-      const sa    = parseNumber(saRaw);
-      const qc    = parseNumber(qcRaw);
-      const sales = parseNumber(salesRaw);
-      const rc    = parseNumber(rcRaw);
-      const test  = parseNumber(testRaw);
+      const sa    = parseNumber(document.getElementById('sa').value);
+      const qc    = parseNumber(document.getElementById('qc').value);
+      const sales = parseNumber(document.getElementById('sales').value);
+      const rc    = parseNumber(document.getElementById('rc').value);
+      const test  = parseNumber(document.getElementById('test').value);
 
       const saScore    = !isNaN(sa)    ? calculateScore(sa,    89, 93, 25, true) : 0;
       const qcScore    = !isNaN(qc)    ? calculateScore(qc,    85, 96, 25, true) : 0;
@@ -194,26 +206,21 @@
       const totalBeforeTax = totalScore / 100 * BASE_KPI * hoursCoefficient;
       const tax = totalBeforeTax * 0.075;
       const totalAfterTax = totalBeforeTax - tax;
-      const kpiPercentage = totalScore;
 
-      updateProgress('hours-progress', workedHours, 176);
-      updateProgress('sa-progress',    sa,    93);
-      updateProgress('qc-progress',    qc,    96);
+      updateProgress('hours-progress', workedHours, normHours);
+      updateProgress('sa-progress', sa, 93);
+      updateProgress('qc-progress', qc, 96);
       updateProgress('sales-progress', sales, 76);
-      updateProgress('rc-progress',    rc,    26, true, 23);
-      updateProgress('test-progress',  test,  10);
+      updateProgress('rc-progress', rc, 26, true, 23);
+      updateProgress('test-progress', test, 10);
 
-      document.getElementById('total-before-tax').textContent = 
-        `${Math.round(totalBeforeTax).toLocaleString('ru-RU')} сум`;
-      document.getElementById('total-after-tax').textContent = 
-        `${Math.round(totalAfterTax).toLocaleString('ru-RU')} сум`;
-      document.getElementById('hours-coefficient').textContent = 
-        `Коэффициент часов: ${(hoursCoefficient * 100).toFixed(1)}%`;
-      document.getElementById('kpi-percentage').textContent = 
-        `Процент от общего КПИ: ${kpiPercentage.toFixed(2)}%`;
+      document.getElementById('total-before-tax').textContent = `${Math.round(totalBeforeTax).toLocaleString('ru-RU')} сум`;
+      document.getElementById('total-after-tax').textContent = `${Math.round(totalAfterTax).toLocaleString('ru-RU')} сум`;
+      document.getElementById('hours-coefficient').textContent = `Коэффициент часов: ${(hoursCoefficient * 100).toFixed(1)}%`;
+      document.getElementById('kpi-percentage').textContent = `Процент от общего КПИ: ${totalScore.toFixed(2)}%`;
 
       const hoursWarning = document.getElementById('hours-warning');
-      hoursWarning.style.display = (!isNaN(workedHours) && workedHours < 176) ? 'block' : 'none';
+      hoursWarning.style.display = (!isNaN(workedHours) && !isNaN(normHours) && workedHours < normHours) ? 'block' : 'none';
     }
 
     function calculateScore(value, min, max, weight, isMoreBetter) {
@@ -222,7 +229,6 @@
         if (value <= min) return 0;
         return ((value - min) / (max - min)) * weight;
       } else {
-        // (чем меньше - тем лучше)
         if (value <= min) return weight;
         if (value >= max) return 0;
         return ((max - value) / (max - min)) * weight;
@@ -237,19 +243,13 @@
       }
       let percentage = 0;
       if (reverse && customMin !== null) {
-        if (value <= customMin) {
-          percentage = 100;
-        } else if (value >= maxValue) {
-          percentage = 0;
-        } else {
-          percentage = (1 - ((value - customMin) / (maxValue - customMin))) * 100;
-        }
+        percentage = (value <= customMin) ? 100 :
+                     (value >= maxValue) ? 0 :
+                     (1 - ((value - customMin) / (maxValue - customMin))) * 100;
       } else {
         percentage = (value / maxValue) * 100;
         percentage = Math.min(100, Math.max(0, percentage));
-        if (reverse) {
-          percentage = 100 - percentage;
-        }
+        if (reverse) percentage = 100 - percentage;
       }
       progressFill.style.width = `${percentage}%`;
     }
